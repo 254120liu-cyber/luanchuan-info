@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, isAdminUser } from '@/lib/server-supabase';
+import { createAdminClient } from '@/lib/server-supabase-admin';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createServerSupabase();
+  const admin = createAdminClient();
   const { id } = await params;
 
-  const { data: post, error } = await supabase
+  const { data: post, error } = await admin
     .from('posts')
     .select('*')
     .eq('id', id)
@@ -18,8 +19,7 @@ export async function GET(
     return NextResponse.json({ error: '信息不存在或已删除' }, { status: 404 });
   }
 
-  // Fetch profile for the post owner
-  const { data: profile } = await supabase
+  const { data: profile } = await admin
     .from('profiles')
     .select('nickname, avatar_url')
     .eq('id', post.user_id)
