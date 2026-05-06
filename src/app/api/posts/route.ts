@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/server-supabase';
 
 export async function GET(req: NextRequest) {
+  try {
   const supabase = await createServerSupabase();
   const { searchParams } = new URL(req.url);
   const category = searchParams.get('category');
@@ -57,6 +58,9 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({ posts, total: count || 0 });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || String(e), stack: e?.stack }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
