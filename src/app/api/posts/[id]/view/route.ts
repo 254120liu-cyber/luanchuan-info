@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/server-supabase';
+import { createAdminClient } from '@/lib/server-supabase-admin';
 
 export async function POST(
   req: NextRequest,
@@ -17,15 +18,23 @@ export async function POST(
     return NextResponse.json({ success: true, skipped: true });
   }
 
-  // Atomic unique view insert, returns new count
-  const { data: newCount, error } = await supabase.rpc('record_post_view', {
+  const admin = createAdminClient();
+
+  // Try unique viewer tracking via RPC
+  const { data: newCount, error: rpcError } = await supabase.rpc('record_post_view', {
     post_id: id,
     viewer_id: user.id,
   });
 
-  if (!error && newCount !== null) {
-    // Sync view_count on posts table
-    await supabase.from('posts').update({ view_count: newCount }).eq('id', id);
+  if (rpcError) {
+    // Fallback: simple increment (uses admin client to bypass RLS)
+    console.warn('[view] RPC failed, using fallback:', rpcError.message);
+    const { data: current } = await admin.from('posts').select('view_count').eq('id', id).single();
+    await admin.from('posts').update({
+      view_count: (current?.view_count || 0) + 1,
+    }).eq('id', id);
+  } else if (newCount !== null && newCount !== undefined) {
+    await admin.from('posts').update({ view_count: newCount }).eq('id', id);
   }
 
   return NextResponse.json({ success: true });
