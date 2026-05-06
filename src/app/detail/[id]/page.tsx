@@ -51,6 +51,7 @@ export default function DetailPage() {
           viewed.push(id);
           localStorage.setItem(viewedKey, JSON.stringify(viewed.slice(-100)));
           fetch(`/api/posts/${id}/view`, { method: 'POST' });
+          setPost((prev: any) => prev ? { ...prev, viewCount: (prev.viewCount || 0) + 1 } : prev);
         }
 
         // Browse history
