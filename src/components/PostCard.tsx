@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { catMap, townMap, formatTime, getRemainingHours } from '@/lib/constants';
@@ -19,7 +20,7 @@ interface PostCardProps {
   };
 }
 
-export default function PostCard({ post }: PostCardProps) {
+const PostCard = memo(function PostCard({ post }: PostCardProps) {
   const cat = catMap[post.category] || { label: '其他', color: '#636E72' };
   const town = townMap[post.town] || '';
   const remaining = getRemainingHours(post.expire_at);
@@ -83,4 +84,6 @@ export default function PostCard({ post }: PostCardProps) {
       </div>
     </Link>
   );
-}
+});
+
+export default PostCard;
