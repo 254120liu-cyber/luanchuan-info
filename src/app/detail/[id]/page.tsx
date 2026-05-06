@@ -9,6 +9,7 @@ import { useAuth } from '@/components/AuthProvider';
 import ContactReveal from '@/components/ContactReveal';
 import FavoriteButton from '@/components/FavoriteButton';
 import ReportButton from '@/components/ReportButton';
+import ImageViewer from '@/components/ImageViewer';
 
 export default function DetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +19,7 @@ export default function DetailPage() {
   const [post, setPost] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -124,10 +126,7 @@ export default function DetailPage() {
             <div
               key={i}
               className="relative aspect-square rounded-xl overflow-hidden border-2 border-[var(--border)] cursor-pointer"
-              onClick={() => {
-                // Simple image preview - open in new tab
-                window.open(img, '_blank');
-              }}
+              onClick={() => setViewerIndex(i)}
             >
               <Image src={img} alt="" fill className="object-cover" sizes="(max-width: 768px) 33vw, 200px" unoptimized />
             </div>
@@ -172,6 +171,10 @@ export default function DetailPage() {
         <p className="text-xs text-center text-[var(--text-muted)]">
           已有 {post.contactViewCount} 人查看过联系方式
         </p>
+      )}
+
+      {viewerIndex !== null && (
+        <ImageViewer images={post.images} initialIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
       )}
     </div>
   );
