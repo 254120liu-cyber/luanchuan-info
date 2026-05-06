@@ -10,55 +10,68 @@ export async function GET(req: NextRequest) {
   const skip = parseInt(searchParams.get('skip') || '0');
   const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50);
 
-  // Get favorite post IDs
-  const { data: favs, error: favError, count } = await supabase
+  // Get ALL favorite post IDs for accurate count
+  const { data: allFavs } = await supabase
     .from('favorites')
-    .select('post_id, created_at', { count: 'exact' })
+    .select('post_id, created_at')
     .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .range(skip, skip + limit - 1);
+    .order('created_at', { ascending: false });
 
-  if (favError) return NextResponse.json({ error: favError.message }, { status: 500 });
-  if (!favs || favs.length === 0) return NextResponse.json({ favorites: [], total: 0 });
+  if (!allFavs || allFavs.length === 0) {
+    return NextResponse.json({ favorites: [], total: 0 });
+  }
 
-  // Get posts — only active, unexpired ones
-  const postIds = favs.map(f => f.post_id);
-  const { data: posts } = await supabase
+  // Get active posts for ALL favorite IDs
+  const allPostIds = allFavs.map(f => f.post_id);
+  const { data: allPosts } = await supabase
     .from('posts')
-    .select('*')
-    .in('id', postIds)
+    .select('id')
+    .in('id', allPostIds)
     .eq('status', 'normal')
     .gt('expire_at', new Date().toISOString());
 
-  // Get profiles for post owners
-  const userIds = [...new Set((posts || []).map(p => p.user_id))];
-  let profileMap: Record<string, any> = {};
-  if (userIds.length > 0) {
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, nickname, avatar_url')
-      .in('id', userIds);
-    (profiles || []).forEach(p => { profileMap[p.id] = p; });
+  const activePostIdSet = new Set((allPosts || []).map(p => p.id));
+
+  // Filter favorites to only active posts
+  const activeFavs = allFavs.filter(f => activePostIdSet.has(f.post_id));
+
+  // Paginate
+  const pageFavs = activeFavs.slice(skip, skip + limit);
+  const pagePostIds = pageFavs.map(f => f.post_id);
+
+  // Fetch full post data for this page
+  let postMap: Record<string, any> = {};
+  if (pagePostIds.length > 0) {
+    const { data: pagePosts } = await supabase
+      .from('posts')
+      .select('*')
+      .in('id', pagePostIds);
+
+    const userIds = [...new Set((pagePosts || []).map(p => p.user_id))];
+    let profileMap: Record<string, any> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, nickname, avatar_url')
+        .in('id', userIds);
+      (profiles || []).forEach(p => { profileMap[p.id] = p; });
+    }
+
+    (pagePosts || []).forEach(p => {
+      const profile = profileMap[p.user_id];
+      postMap[p.id] = {
+        ...p,
+        userNickName: profile?.nickname || '匿名用户',
+        userAvatar: profile?.avatar_url || '',
+      };
+    });
   }
 
-  // Merge
-  const postMap: Record<string, any> = {};
-  (posts || []).forEach(p => {
-    const profile = profileMap[p.user_id];
-    postMap[p.id] = {
-      ...p,
-      userNickName: profile?.nickname || '匿名用户',
-      userAvatar: profile?.avatar_url || '',
-    };
-  });
+  const favorites = pageFavs
+    .map(f => ({ ...postMap[f.post_id], favorited_at: f.created_at, isFavorited: true }))
+    .filter(p => p.id);
 
-  const favorites = favs.map(f => ({
-    ...postMap[f.post_id],
-    favorited_at: f.created_at,
-    isFavorited: true,
-  })).filter(p => p.id); // filter out null results (deleted posts)
-
-  return NextResponse.json({ favorites, total: count || 0 });
+  return NextResponse.json({ favorites, total: activeFavs.length });
 }
 
 export async function POST(req: NextRequest) {
