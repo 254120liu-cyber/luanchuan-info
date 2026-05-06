@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #FF6B4A;
+  --primary-light: #FF8E6A;
+  --navy: #1E272E;
+  --bg-warm: #FFFBF6;
+  --bg-cream: #FFF8F0;
+  --text-muted: #808E9B;
+  --border: #E8DDD4;
+  --radius-hard: 12px;
+}
+
+body {
+  background: var(--bg-warm);
+  color: var(--navy);
+  -webkit-tap-highlight-color: transparent;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+
+/* === View Transitions === */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+::view-transition-old(root) {
+  animation: fadeOut 0.15s ease;
+}
+::view-transition-new(root) {
+  animation: fadeIn 0.2s ease;
+}
+
+/* page enter animation (fallback for browsers without view-transition) */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: pageIn 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slideUp {
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-popIn {
+  animation: popIn 0.3s ease;
+}
+
+@keyframes celebrate {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-celebrate {
+  animation: celebrate 0.4s ease;
+}
