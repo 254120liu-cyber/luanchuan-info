@@ -1,11 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import CategoryTabs from '@/components/CategoryTabs';
 import TownSelect from '@/components/TownSelect';
 import PostCard from '@/components/PostCard';
 import EmptyState from '@/components/EmptyState';
+
+const PAGE_SIZE = 20;
+
+function cacheKey(category: string, town: string): string {
+  return `${category}|${town}`;
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -15,45 +21,71 @@ export default function HomePage() {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [skip, setSkip] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState('');
-  const loadingRef = useRef(false); // prevent duplicate fetches
 
-  const fetchPosts = async (reset: boolean) => {
+  const loadingRef = useRef(false);
+  const cacheRef = useRef<Map<string, { posts: any[]; skip: number; hasMore: boolean }>>(new Map());
+
+  const fetchPosts = useCallback(async (reset: boolean) => {
     if (loadingRef.current) return;
     loadingRef.current = true;
-    setLoading(true);
+
+    const key = cacheKey(activeCategory, town);
+    const newSkip = reset ? 0 : skip;
+    const cached = cacheRef.current.get(key);
+
+    // Show cached data instantly and refresh in background
+    if (reset && cached) {
+      setPosts(cached.posts);
+      setSkip(cached.skip);
+      setHasMore(cached.hasMore);
+      setInitialLoading(false);
+      setRefreshing(true);
+      // refresh in background
+    } else {
+      setLoading(true);
+    }
     setError('');
 
-    const newSkip = reset ? 0 : skip;
     const params = new URLSearchParams();
     if (activeCategory !== 'all') params.set('category', activeCategory);
     if (town) params.set('town', town);
     if (search) params.set('q', search);
     params.set('skip', String(newSkip));
-    params.set('limit', '20');
+    params.set('limit', String(PAGE_SIZE));
 
     try {
       const res = await fetch(`/api/posts?${params}`);
       const data = await res.json();
       if (res.ok) {
-        const newPosts = reset ? data.posts : [...posts, ...data.posts];
-        setPosts(newPosts);
-        setSkip(newSkip + data.posts.length);
-        setHasMore(data.posts.length === 20);
+        const incomingPosts = data.posts;
+        const merged = reset ? incomingPosts : [...(reset ? [] : posts), ...incomingPosts];
+        const newTotalSkip = newSkip + incomingPosts.length;
+        const hMore = incomingPosts.length === PAGE_SIZE;
+
+        setPosts(merged);
+        setSkip(newTotalSkip);
+        setHasMore(hMore);
+
+        // Cache first page only
+        if (reset) {
+          cacheRef.current.set(key, { posts: incomingPosts, skip: newTotalSkip, hasMore: hMore });
+        }
       } else {
         setError(data.error || '加载失败');
       }
     } catch {
-      setError('网络错误，请刷新重试');
+      if (!cached) setError('网络错误，请刷新重试');
     }
     setLoading(false);
     setInitialLoading(false);
+    setRefreshing(false);
     loadingRef.current = false;
-  };
+  }, [activeCategory, town, search, skip, posts]);
 
-  // Initial load
   useEffect(() => {
     setSkip(0);
     setPosts([]);
@@ -61,7 +93,6 @@ export default function HomePage() {
     fetchPosts(true);
   }, [activeCategory, town]);
 
-  // Search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSkip(0);
@@ -70,7 +101,6 @@ export default function HomePage() {
     fetchPosts(true);
   };
 
-  // Infinite scroll
   useEffect(() => {
     const el = document.getElementById('load-trigger');
     if (!el) return;
@@ -84,7 +114,7 @@ export default function HomePage() {
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [hasMore, loading, skip]);
+  }, [hasMore, loading, skip, fetchPosts]);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -111,9 +141,26 @@ export default function HomePage() {
         <TownSelect value={town} onChange={setTown} />
       </div>
 
+      {/* Subtle refresh indicator */}
+      {refreshing && (
+        <div className="px-4 pb-1">
+          <div className="h-0.5 bg-[var(--primary)]/20 rounded-full overflow-hidden">
+            <div className="h-full bg-[var(--primary)]/50 rounded-full animate-pulse" style={{ width: '60%' }} />
+          </div>
+        </div>
+      )}
+
       <div className="px-4 space-y-3 pb-8">
         {initialLoading ? (
-          <div className="text-center py-20 text-[var(--text-muted)] text-sm">加载中...</div>
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-xl p-4 border-2 border-[var(--border)] animate-pulse">
+                <div className="h-3 bg-gray-200 rounded w-1/4 mb-3" />
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                <div className="h-4 bg-gray-200 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
         ) : error ? (
           <div className="text-center py-20">
             <p className="text-sm text-red-400 mb-3">{error}</p>
@@ -128,7 +175,7 @@ export default function HomePage() {
         )}
 
         <div id="load-trigger" className="h-4">
-          {loading && !initialLoading && (
+          {loading && !initialLoading && !refreshing && (
             <div className="text-center py-4 text-[var(--text-muted)] text-sm">加载中...</div>
           )}
           {!hasMore && posts.length > 0 && (
