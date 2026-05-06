@@ -65,6 +65,26 @@ CREATE TABLE IF NOT EXISTS favorites (
 
 CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id);
 
+-- 3.5 浏览记录表（用于去重统计唯一访客）
+CREATE TABLE IF NOT EXISTS post_views (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(post_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_views_post ON post_views(post_id);
+
+-- 原子记录唯一访客：重复自动忽略，返回该帖子的总访客数
+CREATE OR REPLACE FUNCTION record_post_view(post_id UUID, viewer_id UUID)
+RETURNS INT AS $$
+BEGIN
+  INSERT INTO post_views (post_id, user_id) VALUES (post_id, viewer_id) ON CONFLICT DO NOTHING;
+  RETURN (SELECT COUNT(*) FROM post_views WHERE post_id = record_post_view.post_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- 4. 举报记录表
 CREATE TABLE IF NOT EXISTS reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

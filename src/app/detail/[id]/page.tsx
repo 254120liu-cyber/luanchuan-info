@@ -43,8 +43,15 @@ export default function DetailPage() {
         setPost(enriched);
         setLoading(false);
 
-        // View count
-        fetch(`/api/posts/${id}/view`, { method: 'POST' });
+        // View count — only increment on first view per browser
+        const viewedKey = 'luanchuan_viewed';
+        let viewed: string[] = [];
+        try { viewed = JSON.parse(localStorage.getItem(viewedKey) || '[]'); } catch {}
+        if (!viewed.includes(id)) {
+          viewed.push(id);
+          localStorage.setItem(viewedKey, JSON.stringify(viewed.slice(-100)));
+          fetch(`/api/posts/${id}/view`, { method: 'POST' });
+        }
 
         // Browse history
         addHistory({
