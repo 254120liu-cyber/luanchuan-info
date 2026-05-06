@@ -32,14 +32,20 @@ export default function MyPostsPage() {
       .catch(() => setPageLoading(false));
   }, [user, loading, router]);
 
-  const handleDelete = async (postId: string) => {
-    if (!confirm('确定要删除这条信息吗？')) return;
-    const res = await fetch(`/api/posts/${postId}`, { method: 'DELETE' });
-    if (res.ok) {
-      setPosts(posts.filter(p => p.id !== postId));
-    } else {
-      const data = await res.json();
-      alert(data.error || '删除失败');
+  const handleDelete = async (postId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm('确定要删除这条信息吗？')) return;
+    try {
+      const res = await fetch(`/api/posts/${postId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setPosts(prev => prev.filter(p => p.id !== postId));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || '删除失败，请重试');
+      }
+    } catch {
+      alert('网络错误，请重试');
     }
   };
 
@@ -88,7 +94,8 @@ export default function MyPostsPage() {
                   编辑
                 </button>
                 <button
-                  onClick={() => handleDelete(post.id)}
+                  type="button"
+                  onClick={(e) => handleDelete(post.id, e)}
                   className="px-4 py-1.5 rounded-lg bg-white border-2 border-red-300 text-xs font-bold text-red-500 hover:bg-red-50 transition-colors"
                 >
                   删除
