@@ -80,7 +80,22 @@ CREATE TABLE IF NOT EXISTS reports (
 
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(review_status);
 
--- 5. 管理后台统计函数（一次查询返回所有统计数据）
+-- 5. 清理无效收藏（帖子已过期或删除的收藏记录）
+CREATE OR REPLACE FUNCTION cleanup_favorites()
+RETURNS INTEGER AS $$
+DECLARE
+  deleted_count INTEGER;
+BEGIN
+  DELETE FROM favorites
+  WHERE post_id IN (
+    SELECT id FROM posts WHERE status = 'deleted' OR expire_at < NOW()
+  );
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 6. 管理后台统计函数（一次查询返回所有统计数据）
 CREATE OR REPLACE FUNCTION get_admin_stats()
 RETURNS JSONB AS $$
 DECLARE

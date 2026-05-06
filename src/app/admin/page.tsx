@@ -126,6 +126,20 @@ export default function AdminPage() {
       <div className="flex items-center gap-2 mb-4">
         <span className="text-2xl">🛡️</span>
         <h2 className="text-xl font-extrabold text-[var(--navy)]">管理面板</h2>
+        <button
+          onClick={async () => {
+            if (!confirm('确定要清理所有过期信息吗？')) return;
+            try {
+              const res = await fetch('/api/admin/cleanup', { method: 'POST' });
+              const data = await res.json();
+              alert(data.message || '清理完成');
+              if (data.cleaned > 0) fetchStats();
+            } catch { alert('清理失败'); }
+          }}
+          className="ml-auto px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-300 text-xs font-bold hover:bg-orange-100 transition-colors"
+        >
+          🧹 清理过期
+        </button>
       </div>
 
       {/* Tab switcher */}

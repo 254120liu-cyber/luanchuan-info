@@ -21,12 +21,14 @@ export async function GET(req: NextRequest) {
   if (favError) return NextResponse.json({ error: favError.message }, { status: 500 });
   if (!favs || favs.length === 0) return NextResponse.json({ favorites: [], total: 0 });
 
-  // Get posts
+  // Get posts — only active, unexpired ones
   const postIds = favs.map(f => f.post_id);
   const { data: posts } = await supabase
     .from('posts')
     .select('*')
-    .in('id', postIds);
+    .in('id', postIds)
+    .eq('status', 'normal')
+    .gt('expire_at', new Date().toISOString());
 
   // Get profiles for post owners
   const userIds = [...new Set((posts || []).map(p => p.user_id))];
