@@ -64,6 +64,7 @@ export default function MinePage() {
       {/* Menu */}
       <div className="bg-white rounded-xl border-2 border-[var(--navy)] overflow-hidden" style={{ boxShadow: '4px 4px 0px rgba(30,39,46,0.08)' }}>
         {[
+          { label: '编辑资料', icon: '👤', path: '/mine/profile' },
           { label: '我的发布', icon: '📋', path: '/mine/posts' },
           { label: '我的收藏', icon: '⭐', path: '/mine/favorites' },
           { label: '修改密码', icon: '🔒', path: '/mine/password' },

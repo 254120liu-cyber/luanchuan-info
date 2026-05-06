@@ -15,12 +15,16 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '请先登录' }, { status: 401 });
 
-  const { nickname, phone } = await req.json();
+  const { nickname, phone, avatar_url } = await req.json();
+
+  const updateData: Record<string, string> = {};
+  if (nickname !== undefined) updateData.nickname = nickname || '';
+  if (phone !== undefined) updateData.phone = phone || '';
+  if (avatar_url !== undefined) updateData.avatar_url = avatar_url || '';
 
   const { error } = await supabase.from('profiles').upsert({
     id: user.id,
-    nickname: nickname || '',
-    phone: phone || '',
+    ...updateData,
   }, { onConflict: 'id' });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

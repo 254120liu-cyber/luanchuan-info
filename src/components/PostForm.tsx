@@ -92,21 +92,16 @@ export default function PostForm({ initial, postId, isEdit }: Props) {
     <div className="max-w-lg mx-auto p-4 space-y-4">
       <div>
         <label className="block text-sm font-bold text-[var(--navy)] mb-1.5">分类 *</label>
-        <div className="grid grid-cols-4 gap-2">
+        <select
+          value={category}
+          onChange={e => setCategory(e.target.value)}
+          className="w-full px-3 py-2.5 rounded-xl border-2 border-[var(--border)] bg-white text-sm font-semibold focus:outline-none focus:border-[var(--primary)] appearance-none"
+        >
+          <option value="">请选择分类</option>
           {cats.map(c => (
-            <button
-              key={c.key}
-              onClick={() => setCategory(c.key)}
-              className={`py-2 px-1 rounded-lg text-xs font-bold border-2 transition-all ${
-                category === c.key
-                  ? 'bg-[var(--primary)] text-white border-[var(--navy)]'
-                  : 'bg-white text-[var(--navy)] border-[var(--border)] hover:border-[var(--primary)]'
-              }`}
-            >
-              {c.label}
-            </button>
+            <option key={c.key} value={c.key}>{c.label}</option>
           ))}
-        </div>
+        </select>
       </div>
 
       <div>
