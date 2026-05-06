@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { catMap, townMap, formatTime, getRemainingHours } from '@/lib/constants';
@@ -59,25 +60,27 @@ export default function MyPostsPage() {
       ) : (
         <div className="space-y-3">
           {posts.map(post => (
-            <div key={post.id} className={`bg-white rounded-xl p-4 border-2 ${post.status === 'reported' ? 'border-red-300 bg-red-50' : 'border-[var(--border)]'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                  post.status === 'reported' ? 'bg-red-100 text-red-600' :
-                  post.status === 'deleted' ? 'bg-gray-100 text-gray-500' : ''
-                }`}>
-                  {post.status === 'reported' ? '审核中' : post.status === 'deleted' ? '已删除' : post.categoryLabel}
-                </span>
-                <span className="text-xs text-[var(--text-muted)]">{post.townLabel}</span>
-                <span className="text-xs text-[var(--text-muted)] ml-auto">{post.timeText}</span>
-              </div>
-              <p className="text-sm font-semibold text-[var(--navy)] line-clamp-2 mb-2">{post.content}</p>
-              <div className="flex items-center gap-1 text-xs text-[var(--text-muted)] mb-3">
-                <span>👁 {post.view_count || 0}次浏览</span>
-                {post.remainingHours <= 24 && (
-                  <span className="text-red-400 ml-2">{post.remainingHours <= 0 ? '已过期' : `剩余${post.remainingHours}h`}</span>
-                )}
-              </div>
-              <div className="flex gap-2">
+            <div key={post.id} className={`bg-white rounded-xl border-2 ${post.status === 'reported' ? 'border-red-300 bg-red-50' : 'border-[var(--border)]'}`}>
+              <Link href={`/detail/${post.id}`} className="block p-4 pb-0 no-underline">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    post.status === 'reported' ? 'bg-red-100 text-red-600' :
+                    post.status === 'deleted' ? 'bg-gray-100 text-gray-500' : ''
+                  }`}>
+                    {post.status === 'reported' ? '审核中' : post.status === 'deleted' ? '已删除' : post.categoryLabel}
+                  </span>
+                  <span className="text-xs text-[var(--text-muted)]">{post.townLabel}</span>
+                  <span className="text-xs text-[var(--text-muted)] ml-auto">{post.timeText}</span>
+                </div>
+                <p className="text-sm font-semibold text-[var(--navy)] line-clamp-2 mb-2">{post.content}</p>
+                <div className="flex items-center gap-1 text-xs text-[var(--text-muted)] mb-3">
+                  <span>👁 {post.view_count || 0}次浏览</span>
+                  {post.remainingHours <= 24 && (
+                    <span className="text-red-400 ml-2">{post.remainingHours <= 0 ? '已过期' : `剩余${post.remainingHours}h`}</span>
+                  )}
+                </div>
+              </Link>
+              <div className="flex gap-2 px-4 pb-4">
                 <button
                   onClick={() => router.push(`/publish/${post.id}`)}
                   className="px-4 py-1.5 rounded-lg bg-white border-2 border-[var(--border)] text-xs font-bold text-[var(--navy)] hover:border-[var(--primary)] transition-colors"

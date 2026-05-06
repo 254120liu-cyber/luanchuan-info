@@ -30,16 +30,16 @@ export default function ContactReveal({ phone, wechat, onReveal }: Props) {
   }
 
   return (
-    <div className="bg-[var(--bg-cream)] rounded-xl p-4 border-2 border-[var(--navy)] animate-popIn">
+    <div className="bg-[var(--bg-cream)] rounded-xl p-4 border-2 border-[var(--navy)] animate-popIn space-y-2">
       {phone && (
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-lg">📞</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-[var(--text-muted)] min-w-[2.5rem]">电话</span>
           <a href={`tel:${phone}`} className="text-lg font-extrabold text-[var(--navy)] no-underline">{phone}</a>
         </div>
       )}
       {wechat && (
         <div className="flex items-center gap-2">
-          <span className="text-lg">💬</span>
+          <span className="text-sm font-bold text-[var(--text-muted)] min-w-[2.5rem]">微信</span>
           <span className="text-lg font-extrabold text-[var(--navy)]">{wechat}</span>
         </div>
       )}
