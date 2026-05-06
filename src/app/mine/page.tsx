@@ -29,8 +29,8 @@ export default function MinePage() {
       .then(d => { if (!d.error) setPostCount(d.total || 0); })
       .catch(() => {});
 
-    // Load favorite count
-    fetch('/api/favorites?limit=1')
+    // Load favorite count (uses fast count_only query)
+    fetch('/api/favorites?count_only=1')
       .then(r => r.json())
       .then(d => { if (!d.error) setFavCount(d.total || 0); })
       .catch(() => {});

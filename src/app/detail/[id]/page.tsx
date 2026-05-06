@@ -64,14 +64,11 @@ export default function DetailPage() {
           timeText: enriched.timeText,
         });
 
-        // Check favorite
+        // Check if this post is favorited
         if (user) {
-          fetch('/api/favorites')
+          fetch(`/api/favorites?check=${id}`)
             .then(r => r.json())
-            .then(fData => {
-              const favs = (fData.favorites || []).map((f: any) => f.id);
-              setIsFavorited(favs.includes(id));
-            })
+            .then(d => { if (d.favorited) setIsFavorited(true); })
             .catch(() => {});
         }
       })

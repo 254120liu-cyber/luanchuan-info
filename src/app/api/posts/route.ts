@@ -33,7 +33,7 @@ async function autoCleanup() {
 }
 
 export async function GET(req: NextRequest) {
-  autoCleanup(); // fire-and-forget, doesn't block response
+  setTimeout(() => autoCleanup(), 0);
   try {
   const supabase = await createServerSupabase();
   const { searchParams } = new URL(req.url);

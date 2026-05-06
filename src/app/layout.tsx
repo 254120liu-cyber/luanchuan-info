@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/components/AuthProvider';
@@ -21,9 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col">
         <AuthProvider>
           <NavBar />
-          <Suspense fallback={<div className="flex items-center justify-center py-32"><div className="w-8 h-8 border-3 border-[var(--primary)] border-t-transparent rounded-full animate-spin" /></div>}>
-            <main className="flex-1">{children}</main>
-          </Suspense>
+          <main className="flex-1">{children}</main>
           <footer className="text-center text-xs text-gray-400 py-6 border-t border-[var(--border)]">
             &copy; {new Date().getFullYear()} 栾川便民信息 — 信息完全免费发布
           </footer>
