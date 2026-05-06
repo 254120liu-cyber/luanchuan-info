@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 
 interface Props {
@@ -10,12 +11,13 @@ interface Props {
 
 export default function FavoriteButton({ postId, initialFavorited }: Props) {
   const { user } = useAuth();
+  const router = useRouter();
   const [favorited, setFavorited] = useState(initialFavorited);
   const [loading, setLoading] = useState(false);
 
   const toggle = async () => {
     if (!user) {
-      window.location.href = '/auth';
+      router.push('/auth');
       return;
     }
     if (loading) return;

@@ -1,16 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { getHistory, clearHistory } from '@/lib/storage';
 import { catMap } from '@/lib/constants';
 
 export default function HistoryPage() {
-  const [history, setHistory] = useState<any[]>([]);
-
-  useEffect(() => {
-    setHistory(getHistory());
-  }, []);
+  const [history, setHistory] = useState<any[]>(() => getHistory());
 
   const handleClear = () => {
     if (!confirm('确定要清空所有浏览历史吗？')) return;

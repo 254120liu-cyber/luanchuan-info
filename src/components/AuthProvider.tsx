@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { createClient } from '@/lib/supabase';
+import { LOCAL_DOMAIN } from '@/lib/constants';
 import type { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -17,10 +18,9 @@ const AuthContext = createContext<AuthContextType>({
   signOut: () => {}
 });
 
-// Extract real phone from Supabase email (format: 13812345678@lc.local)
 function emailToPhone(email: string): string {
-  if (email.endsWith('@lc.local')) return email.replace('@lc.local', '');
-  return email; // fallback for admin email login
+  if (email.endsWith(LOCAL_DOMAIN)) return email.replace(LOCAL_DOMAIN, '');
+  return email;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = () => {
     supabase.auth.signOut().then(() => {
-      window.location.href = '/';
+      window.location.replace('/');
     });
   };
 

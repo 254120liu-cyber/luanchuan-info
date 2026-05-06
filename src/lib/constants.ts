@@ -36,6 +36,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export const POST_EXPIRE_HOURS = 72;
+export const LOCAL_DOMAIN = '@lc.local';
 
 export type PostStatus = 'normal' | 'reported' | 'deleted';
 export type BanStatus = 'normal' | 'temp_banned' | 'perm_banned';

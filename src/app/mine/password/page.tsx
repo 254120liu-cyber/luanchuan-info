@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
@@ -17,8 +17,11 @@ export default function ChangePasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  if (loading) return <div className="text-center py-20 text-[var(--text-muted)]">加载中...</div>;
-  if (!user) { router.push('/auth'); return null; }
+  useEffect(() => {
+    if (!loading && !user) router.push('/auth');
+  }, [loading, user, router]);
+
+  if (loading || !user) return <div className="text-center py-20 text-[var(--text-muted)]">加载中...</div>;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

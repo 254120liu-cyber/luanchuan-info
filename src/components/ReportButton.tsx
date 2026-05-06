@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 
 interface Props {
@@ -9,12 +10,13 @@ interface Props {
 
 export default function ReportButton({ postId }: Props) {
   const { user } = useAuth();
+  const router = useRouter();
   const [reported, setReported] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleReport = async () => {
     if (!user) {
-      window.location.href = '/auth';
+      router.push('/auth');
       return;
     }
     if (loading || reported) return;

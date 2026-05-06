@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { LOCAL_DOMAIN } from '@/lib/constants';
 
-// Phone number → Supabase-compatible email
-function phoneToEmail(phone: string) { return phone + '@lc.local'; }
+function phoneToEmail(phone: string) { return phone + LOCAL_DOMAIN; }
 
 export default function AuthPage() {
   const router = useRouter();

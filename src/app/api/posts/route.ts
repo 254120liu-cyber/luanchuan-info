@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/server-supabase';
+import { createServerSupabase, batchFetchProfiles } from '@/lib/server-supabase';
+import { POST_EXPIRE_HOURS } from '@/lib/constants';
 
 export async function GET(req: NextRequest) {
   try {
@@ -36,16 +37,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Fetch profiles for each post's user_id
   const userIds = [...new Set((data || []).map(p => p.user_id))];
-  let profileMap: Record<string, any> = {};
-  if (userIds.length > 0) {
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, nickname, avatar_url')
-      .in('id', userIds);
-    (profiles || []).forEach(p => { profileMap[p.id] = p; });
-  }
+  const profileMap = await batchFetchProfiles(supabase, userIds);
 
   const posts = (data || []).map(p => {
     const profile = profileMap[p.user_id];
@@ -59,7 +52,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ posts, total: count || 0 });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || String(e), stack: e?.stack }, { status: 500 });
+    console.error('[posts list error]', e?.message || e);
+    return NextResponse.json({ error: '服务器错误，请稍后重试' }, { status: 500 });
   }
 }
 
@@ -87,7 +81,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '请填写完整信息' }, { status: 400 });
   }
 
-  const expireAt = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
+  const expireAt = new Date(Date.now() + POST_EXPIRE_HOURS * 3600 * 1000).toISOString();
 
   const { data, error } = await supabase.from('posts').insert({
     user_id: user.id,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/server-supabase';
+import { createServerSupabase, isAdminUser } from '@/lib/server-supabase';
 
 export async function GET(
   req: NextRequest,
@@ -74,10 +74,7 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: '请先登录' }, { status: 401 });
 
   const { id } = await params;
-  const isAdmin = !!(user.email && (
-    (process.env.NEXT_PUBLIC_ADMIN_PHONE && user.email === `${process.env.NEXT_PUBLIC_ADMIN_PHONE}@lc.local`) ||
-    user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
-  ));
+  const isAdmin = isAdminUser(user.email);
 
   const { data: existing } = await supabase.from('posts').select('user_id').eq('id', id).single();
   if (!existing) return NextResponse.json({ error: '信息不存在' }, { status: 404 });
