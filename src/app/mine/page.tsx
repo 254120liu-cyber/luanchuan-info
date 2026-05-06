@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
@@ -42,7 +43,11 @@ export default function MinePage() {
     <div className="max-w-lg mx-auto p-4 space-y-4">
       {/* Profile header */}
       <div className="bg-white rounded-xl p-5 border-2 border-[var(--navy)] flex items-center gap-4" style={{ boxShadow: '4px 4px 0px rgba(30,39,46,0.08)' }}>
-        <span className="text-5xl">👤</span>
+        {profile?.avatar_url ? (
+          <Image src={profile.avatar_url} alt="" width={56} height={56} className="rounded-full border-2 border-[var(--border)]" unoptimized />
+        ) : (
+          <span className="text-5xl">👤</span>
+        )}
         <div>
           <p className="text-lg font-extrabold text-[var(--navy)]">{profile?.nickname || '用户'}</p>
           <p className="text-xs text-[var(--text-muted)]">{phone || '未绑定手机号'}</p>

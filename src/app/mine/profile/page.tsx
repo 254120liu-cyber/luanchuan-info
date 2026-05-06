@@ -1,13 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/components/AuthProvider';
 
+function compressAvatar(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = document.createElement('img');
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 200;
+      canvas.height = 200;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('canvas error')); return; }
+      ctx.drawImage(img, 0, 0, 200, 200);
+      canvas.toBlob(
+        blob => { if (blob) resolve(blob); else reject(new Error('compress failed')); },
+        'image/jpeg',
+        0.6
+      );
+    };
+    img.onerror = () => reject(new Error('load failed'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export default function EditProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const mountedRef = useRef(true);
 
   const [nickname, setNickname] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -16,6 +38,11 @@ export default function EditProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) { router.push('/auth'); return; }
@@ -40,44 +67,56 @@ export default function EditProfilePage() {
     setSaving(true);
     setError('');
 
-    let newAvatarUrl = avatarUrl;
+    // Upload avatar and save profile in parallel
+    const tasks: Promise<any>[] = [];
 
-    // Upload avatar if changed
+    // Profile update
+    const profileData: Record<string, string> = { nickname: nickname.trim() };
+    tasks.push(
+      fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      })
+    );
+
+    // Avatar upload (compress + upload in background)
+    let avatarPromise: Promise<string | null> = Promise.resolve(null);
     if (avatarFile) {
-      const fd = new FormData();
-      fd.append('file', avatarFile, `avatar_${Date.now()}.jpg`);
-      try {
+      avatarPromise = (async () => {
+        const compressed = await compressAvatar(avatarFile);
+        const fd = new FormData();
+        fd.append('file', compressed, `avatar_${Date.now()}.jpg`);
         const res = await fetch('/api/upload', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error('upload failed');
         const data = await res.json();
-        if (res.ok) {
-          newAvatarUrl = data.url;
-        } else {
-          setError('头像上传失败');
-          setSaving(false);
-          return;
-        }
-      } catch {
-        setError('头像上传失败');
-        setSaving(false);
-        return;
+        return data.url as string;
+      })();
+    }
+
+    try {
+      const [newAvatarUrl] = await Promise.all([
+        avatarPromise,
+        ...tasks,
+      ]);
+
+      // If avatar was uploaded, update the profile with the new URL
+      if (newAvatarUrl) {
+        await fetch('/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ avatar_url: newAvatarUrl }),
+        });
       }
-    }
 
-    // Save profile
-    const res = await fetch('/api/profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname: nickname.trim(), avatar_url: newAvatarUrl }),
-    });
-
-    if (res.ok) {
-      setSuccess(true);
-      setTimeout(() => router.push('/mine'), 1000);
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error || '保存失败');
+      if (mountedRef.current) {
+        setSuccess(true);
+        setTimeout(() => router.push('/mine'), 800);
+      }
+    } catch {
+      if (mountedRef.current) setError('保存失败');
     }
-    setSaving(false);
+    if (mountedRef.current) setSaving(false);
   };
 
   if (loading) return <div className="text-center py-20 text-[var(--text-muted)]">加载中...</div>;
@@ -95,17 +134,10 @@ export default function EditProfilePage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Avatar */}
             <div className="flex flex-col items-center gap-3">
               <div className="w-24 h-24 rounded-full overflow-hidden border-3 border-[var(--border)] bg-[var(--bg-warm)] relative">
                 {(avatarPreview || avatarUrl) ? (
-                  <Image
-                    src={avatarPreview || avatarUrl}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
+                  <Image src={avatarPreview || avatarUrl} alt="" fill className="object-cover" unoptimized />
                 ) : (
                   <span className="absolute inset-0 flex items-center justify-center text-4xl">👤</span>
                 )}
@@ -116,7 +148,6 @@ export default function EditProfilePage() {
               </label>
             </div>
 
-            {/* Nickname */}
             <div>
               <label className="block text-sm font-bold text-[var(--navy)] mb-1.5">昵称</label>
               <input
