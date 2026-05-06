@@ -10,29 +10,14 @@ export default function MinePage() {
   const { user, phone, loading, isAdmin, signOut } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
-  const [postCount, setPostCount] = useState(0);
-  const [favCount, setFavCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) { router.push('/auth'); return; }
     if (!user) return;
 
-    // Load profile
     fetch('/api/profile')
       .then(r => r.json())
       .then(d => { if (!d.error) setProfile(d); })
-      .catch(() => {});
-
-    // Load post count
-    fetch('/api/mine/posts?limit=1')
-      .then(r => r.json())
-      .then(d => { if (!d.error) setPostCount(d.total || 0); })
-      .catch(() => {});
-
-    // Load favorite count (uses fast count_only query)
-    fetch('/api/favorites?count_only=1')
-      .then(r => r.json())
-      .then(d => { if (!d.error) setFavCount(d.total || 0); })
       .catch(() => {});
   }, [user, loading, router]);
 
@@ -51,18 +36,6 @@ export default function MinePage() {
         <div>
           <p className="text-lg font-extrabold text-[var(--navy)]">{profile?.nickname || '用户'}</p>
           <p className="text-xs text-[var(--text-muted)]">{phone || '未绑定手机号'}</p>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-xl p-4 border-2 border-[var(--border)] text-center">
-          <p className="text-2xl font-extrabold text-[var(--primary)]">{postCount}</p>
-          <p className="text-xs text-[var(--text-muted)] font-semibold">发布</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border-2 border-[var(--border)] text-center">
-          <p className="text-2xl font-extrabold text-[var(--primary)]">{favCount}</p>
-          <p className="text-xs text-[var(--text-muted)] font-semibold">收藏</p>
         </div>
       </div>
 
