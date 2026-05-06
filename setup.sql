@@ -80,7 +80,29 @@ CREATE TABLE IF NOT EXISTS reports (
 
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(review_status);
 
--- 5. 浏览量自增函数（原子操作，避免并发问题）
+-- 5. 管理后台统计函数（一次查询返回所有统计数据）
+CREATE OR REPLACE FUNCTION get_admin_stats()
+RETURNS JSONB AS $$
+DECLARE
+  week_ago TIMESTAMPTZ := NOW() - INTERVAL '7 days';
+  today_start TIMESTAMPTZ := DATE_TRUNC('day', NOW());
+BEGIN
+  RETURN (
+    SELECT jsonb_build_object(
+      'totalUsers', (SELECT COUNT(*) FROM profiles),
+      'totalPosts', (SELECT COUNT(*) FROM posts),
+      'activePosts', (SELECT COUNT(*) FROM posts WHERE status = 'normal' AND expire_at > NOW()),
+      'postsThisWeek', (SELECT COUNT(*) FROM posts WHERE created_at >= week_ago),
+      'postsToday', (SELECT COUNT(*) FROM posts WHERE created_at >= today_start),
+      'newUsersThisWeek', (SELECT COUNT(*) FROM profiles WHERE created_at >= week_ago),
+      'pendingReports', (SELECT COUNT(*) FROM reports WHERE review_status = 'pending'),
+      'totalContactViews', (SELECT COALESCE(SUM(contact_view_count), 0) FROM posts)
+    )
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 6. 浏览量自增函数（原子操作，避免并发问题）
 CREATE OR REPLACE FUNCTION increment_view_count(post_id UUID)
 RETURNS VOID AS $$
 BEGIN

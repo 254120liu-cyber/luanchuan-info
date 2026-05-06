@@ -11,32 +11,26 @@ export async function GET() {
 
   const admin = createAdminClient();
   const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 86400000);
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
 
+  // All queries in one parallel batch
   const [
-    { count: totalUsers },
-    { count: totalPosts },
-    { count: activePosts },
-    { count: postsThisWeek },
-    { count: postsToday },
-    { count: newUsersThisWeek },
-    { count: pendingReports },
+    rpcResult,
+    weekPostsRes,
+    weekUsersRes,
+    recentUsersRes,
+    recentPostsRes,
   ] = await Promise.all([
-    admin.from('profiles').select('*', { count: 'exact', head: true }),
-    admin.from('posts').select('*', { count: 'exact', head: true }),
-    admin.from('posts').select('*', { count: 'exact', head: true }).eq('status', 'normal').gt('expire_at', now.toISOString()),
-    admin.from('posts').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo.toISOString()),
-    admin.from('posts').select('*', { count: 'exact', head: true }).gte('created_at', todayStart.toISOString()),
-    admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo.toISOString()),
-    admin.from('reports').select('*', { count: 'exact', head: true }).eq('review_status', 'pending'),
+    admin.rpc('get_admin_stats').single(),
+    admin.from('posts').select('created_at').gte('created_at', weekAgo),
+    admin.from('profiles').select('created_at').gte('created_at', weekAgo),
+    admin.from('profiles').select('id, nickname, phone, created_at').order('created_at', { ascending: false }).limit(5),
+    admin.from('posts').select('id, content, category, created_at').order('created_at', { ascending: false }).limit(5),
   ]);
 
-  // Contact views sum
-  const { data: contactData } = await admin.from('posts').select('contact_view_count');
-  const totalContactViews = (contactData || []).reduce((sum, p) => sum + (p.contact_view_count || 0), 0);
+  const stats: any = (rpcResult.data || {}) as any;
 
-  // Day-by-day stats for the last 7 days
+  // Build daily stats chart data
   const days: { date: string; label: string; posts: number; users: number }[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
@@ -44,55 +38,29 @@ export async function GET() {
     days.push({ date: dateStr, label: `${d.getMonth() + 1}/${d.getDate()}`, posts: 0, users: 0 });
   }
 
-  // Query posts in last 7 days
-  const { data: weekPosts } = await admin
-    .from('posts')
-    .select('created_at')
-    .gte('created_at', weekAgo.toISOString());
-
-  (weekPosts || []).forEach(p => {
+  (weekPostsRes.data || []).forEach((p: any) => {
     const d = p.created_at.split('T')[0];
     const day = days.find(x => x.date === d);
     if (day) day.posts++;
   });
 
-  // Query users in last 7 days
-  const { data: weekUsers } = await admin
-    .from('profiles')
-    .select('created_at')
-    .gte('created_at', weekAgo.toISOString());
-
-  (weekUsers || []).forEach(u => {
+  (weekUsersRes.data || []).forEach((u: any) => {
     const d = u.created_at.split('T')[0];
     const day = days.find(x => x.date === d);
     if (day) day.users++;
   });
 
-  // Recent users (last 5)
-  const { data: recentUsers } = await admin
-    .from('profiles')
-    .select('id, nickname, phone, created_at')
-    .order('created_at', { ascending: false })
-    .limit(5);
-
-  // Recent posts (last 5)
-  const { data: recentPosts } = await admin
-    .from('posts')
-    .select('id, content, category, created_at')
-    .order('created_at', { ascending: false })
-    .limit(5);
-
   return NextResponse.json({
-    totalUsers: totalUsers || 0,
-    totalPosts: totalPosts || 0,
-    activePosts: activePosts || 0,
-    postsThisWeek: postsThisWeek || 0,
-    postsToday: postsToday || 0,
-    totalContactViews,
-    newUsersThisWeek: newUsersThisWeek || 0,
-    pendingReports: pendingReports || 0,
-    recentUsers: recentUsers || [],
-    recentPosts: recentPosts || [],
+    totalUsers: stats.totalUsers || 0,
+    totalPosts: stats.totalPosts || 0,
+    activePosts: stats.activePosts || 0,
+    postsThisWeek: stats.postsThisWeek || 0,
+    postsToday: stats.postsToday || 0,
+    totalContactViews: stats.totalContactViews || 0,
+    newUsersThisWeek: stats.newUsersThisWeek || 0,
+    pendingReports: stats.pendingReports || 0,
+    recentUsers: recentUsersRes.data || [],
+    recentPosts: recentPostsRes.data || [],
     dailyStats: days,
   });
 }
