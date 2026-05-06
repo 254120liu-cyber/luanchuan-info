@@ -1,8 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, batchFetchProfiles } from '@/lib/server-supabase';
+import { createAdminClient } from '@/lib/server-supabase-admin';
 import { POST_EXPIRE_HOURS } from '@/lib/constants';
 
+// Auto-cleanup: run at most once per hour
+let lastCleanup = 0;
+const CLEANUP_INTERVAL = 3600000; // 1 hour in ms
+
+async function autoCleanup() {
+  const now = Date.now();
+  if (now - lastCleanup < CLEANUP_INTERVAL) return;
+  lastCleanup = now;
+
+  try {
+    const admin = createAdminClient();
+    // Mark expired posts as deleted
+    const { data: expired } = await admin
+      .from('posts')
+      .select('id')
+      .eq('status', 'normal')
+      .lt('expire_at', new Date().toISOString());
+
+    if (expired && expired.length > 0) {
+      const ids = expired.map(p => p.id);
+      await admin.from('posts').update({ status: 'deleted' }).in('id', ids);
+      console.log(`[auto-cleanup] 已清理 ${ids.length} 条过期信息`);
+    }
+
+    // Clean up orphaned favorites
+    try { await admin.rpc('cleanup_favorites'); } catch {}
+  } catch {}
+}
+
 export async function GET(req: NextRequest) {
+  autoCleanup(); // fire-and-forget, doesn't block response
   try {
   const supabase = await createServerSupabase();
   const { searchParams } = new URL(req.url);
