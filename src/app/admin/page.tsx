@@ -7,9 +7,10 @@ import { useAuth } from '@/components/AuthProvider';
 export default function AdminPage() {
   const { user, loading, isAdmin } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'reports' | 'banned'>('reports');
+  const [activeTab, setActiveTab] = useState<'stats' | 'reports' | 'banned'>('stats');
   const [reports, setReports] = useState<any[]>([]);
   const [bannedUsers, setBannedUsers] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const [loadingData, setLoadingData] = useState(false);
 
   useEffect(() => {
@@ -36,11 +37,22 @@ export default function AdminPage() {
     setLoadingData(false);
   }, []);
 
+  const fetchStats = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const res = await fetch('/api/admin/stats');
+      const data = await res.json();
+      if (res.ok) setStats(data);
+    } catch {}
+    setLoadingData(false);
+  }, []);
+
   useEffect(() => {
     if (!isAdmin) return;
-    if (activeTab === 'reports') fetchReports();
+    if (activeTab === 'stats') fetchStats();
+    else if (activeTab === 'reports') fetchReports();
     else fetchBanned();
-  }, [activeTab, isAdmin, fetchReports, fetchBanned]);
+  }, [activeTab, isAdmin, fetchReports, fetchBanned, fetchStats]);
 
   const handleApprove = async (reportId: string) => {
     // Ask for ban type
@@ -117,31 +129,67 @@ export default function AdminPage() {
       </div>
 
       {/* Tab switcher */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setActiveTab('reports')}
-          className={`px-4 py-2 rounded-xl font-bold text-sm border-2 transition-all ${
-            activeTab === 'reports'
-              ? 'bg-[var(--navy)] text-white border-[var(--navy)]'
-              : 'bg-white text-[var(--navy)] border-[var(--border)]'
-          }`}
-        >
-          举报审核
-        </button>
-        <button
-          onClick={() => setActiveTab('banned')}
-          className={`px-4 py-2 rounded-xl font-bold text-sm border-2 transition-all ${
-            activeTab === 'banned'
-              ? 'bg-[var(--navy)] text-white border-[var(--navy)]'
-              : 'bg-white text-[var(--navy)] border-[var(--border)]'
-          }`}
-        >
-          封禁用户
-        </button>
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {[
+          { key: 'stats', label: '数据统计' },
+          { key: 'reports', label: '举报审核' },
+          { key: 'banned', label: '封禁用户' },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key as any)}
+            className={`px-4 py-2 rounded-xl font-bold text-sm border-2 transition-all ${
+              activeTab === tab.key
+                ? 'bg-[var(--navy)] text-white border-[var(--navy)]'
+                : 'bg-white text-[var(--navy)] border-[var(--border)]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {loadingData ? (
         <div className="text-center py-10 text-[var(--text-muted)]">加载中...</div>
+      ) : activeTab === 'stats' ? (
+        <div className="space-y-4">
+          {/* Stats cards */}
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: '注册用户', value: stats?.totalUsers || 0, icon: '👥' },
+              { label: '本周新增用户', value: stats?.newUsersThisWeek || 0, icon: '🆕' },
+              { label: '历史总信息', value: stats?.totalPosts || 0, icon: '📝' },
+              { label: '当前有效信息', value: stats?.activePosts || 0, icon: '✅' },
+              { label: '今日发布', value: stats?.postsToday || 0, icon: '🔥' },
+              { label: '本周发布', value: stats?.postsThisWeek || 0, icon: '📅' },
+              { label: '联系方式查看', value: stats?.totalContactViews || 0, icon: '📱' },
+              { label: '举报待审核', value: reports.length, icon: '🚩' },
+            ].map(card => (
+              <div key={card.label} className="bg-white rounded-xl p-4 border-2 border-[var(--border)] text-center">
+                <p className="text-2xl mb-1">{card.icon}</p>
+                <p className="text-2xl font-extrabold text-[var(--navy)]">{card.value}</p>
+                <p className="text-xs text-[var(--text-muted)] font-semibold">{card.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Recent users */}
+          {stats?.recentUsers?.length > 0 && (
+            <div className="bg-white rounded-xl p-4 border-2 border-[var(--border)]">
+              <p className="text-sm font-bold text-[var(--navy)] mb-3">最新注册用户</p>
+              <div className="space-y-2">
+                {stats.recentUsers.map((u: any) => (
+                  <div key={u.id} className="flex items-center gap-2 text-sm">
+                    <span className="text-lg">👤</span>
+                    <span className="font-semibold text-[var(--navy)]">{u.nickname || '未设置昵称'}</span>
+                    <span className="text-xs text-[var(--text-muted)] ml-auto">{u.phone || ''}</span>
+                    <span className="text-xs text-[var(--text-muted)]">{formatTime(u.created_at)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       ) : activeTab === 'reports' ? (
         reports.length === 0 ? (
           <div className="text-center py-10 text-[var(--text-muted)]">
