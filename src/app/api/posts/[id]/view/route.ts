@@ -9,23 +9,23 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser();
   const { id } = await params;
 
-  if (user) {
-    // Don't count self-views
-    const { data: post } = await supabase.from('posts').select('user_id').eq('id', id).single();
-    if (post && post.user_id === user.id) {
-      return NextResponse.json({ success: true, skipped: true });
-    }
+  if (!user) return NextResponse.json({ success: true });
 
-    // Use RPC for atomic unique viewer tracking
-    const { error } = await supabase.rpc('record_post_view', {
-      post_id: id,
-      viewer_id: user.id,
-    });
+  // Don't count self-views
+  const { data: post } = await supabase.from('posts').select('user_id').eq('id', id).single();
+  if (post && post.user_id === user.id) {
+    return NextResponse.json({ success: true, skipped: true });
+  }
 
-    if (error) {
-      // Fallback: update view_count via the old function
-      try { await supabase.rpc('increment_view_count', { post_id: id }); } catch {}
-    }
+  // Atomic unique view insert, returns new count
+  const { data: newCount, error } = await supabase.rpc('record_post_view', {
+    post_id: id,
+    viewer_id: user.id,
+  });
+
+  if (!error && newCount !== null) {
+    // Sync view_count on posts table
+    await supabase.from('posts').update({ view_count: newCount }).eq('id', id);
   }
 
   return NextResponse.json({ success: true });

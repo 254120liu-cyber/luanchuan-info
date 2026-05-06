@@ -137,15 +137,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 6. 浏览量自增函数（原子操作，避免并发问题）
-CREATE OR REPLACE FUNCTION increment_view_count(post_id UUID)
-RETURNS VOID AS $$
-BEGIN
-  UPDATE posts SET view_count = view_count + 1 WHERE id = post_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- 6. 启用 RLS（行级安全）
+-- 6. RLS 策略-- 6. 启用 RLS（行级安全）
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
