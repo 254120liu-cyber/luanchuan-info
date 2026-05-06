@@ -115,6 +115,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- 5.5 统计有效收藏数（仅计算帖子仍有效未过期的）
+CREATE OR REPLACE FUNCTION count_active_favorites(uid UUID)
+RETURNS INT AS $$
+BEGIN
+  RETURN (
+    SELECT COUNT(*)
+    FROM favorites f
+    JOIN posts p ON f.post_id = p.id
+    WHERE f.user_id = uid
+      AND p.status = 'normal'
+      AND p.expire_at > NOW()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- 6. 管理后台统计函数（一次查询返回所有统计数据）
 CREATE OR REPLACE FUNCTION get_admin_stats()
 RETURNS JSONB AS $$

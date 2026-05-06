@@ -23,14 +23,12 @@ export async function GET(req: NextRequest) {
   }
 
   if (countOnly) {
-    // Fast count: only count favorites linked to active posts
-    const { count, error } = await supabase
-      .from('favorites')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+    // Count only active favorites (JOIN posts to exclude expired/deleted)
+    const { data: activeCount, error } = await supabase
+      .rpc('count_active_favorites', { uid: user.id });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ total: count || 0, favorites: [] });
+    return NextResponse.json({ total: activeCount || 0, favorites: [] });
   }
 
   // Full list: paginated favorites with post data
