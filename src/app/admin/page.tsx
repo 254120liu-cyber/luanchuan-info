@@ -163,7 +163,7 @@ export default function AdminPage() {
               { label: '今日发布', value: stats?.postsToday || 0, icon: '🔥' },
               { label: '本周发布', value: stats?.postsThisWeek || 0, icon: '📅' },
               { label: '联系方式查看', value: stats?.totalContactViews || 0, icon: '📱' },
-              { label: '举报待审核', value: reports.length, icon: '🚩' },
+              { label: '举报待审核', value: stats?.pendingReports || 0, icon: '🚩' },
             ].map(card => (
               <div key={card.label} className="bg-white rounded-xl p-4 border-2 border-[var(--border)] text-center">
                 <p className="text-2xl mb-1">{card.icon}</p>
@@ -172,6 +172,46 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+
+          {/* Daily chart */}
+          {stats?.dailyStats && (
+            <div className="bg-white rounded-xl p-4 border-2 border-[var(--border)]">
+              <p className="text-sm font-bold text-[var(--navy)] mb-4">近7天发布趋势</p>
+              <div className="flex items-end gap-2 h-32">
+                {stats.dailyStats.map((d: any) => {
+                  const maxVal = Math.max(...stats.dailyStats.map((x: any) => x.posts), 1);
+                  const h = Math.max((d.posts / maxVal) * 100, 2);
+                  return (
+                    <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
+                      <span className="text-xs font-bold text-[var(--navy)]">{d.posts || ''}</span>
+                      <div
+                        className="w-full rounded-t-md bg-[var(--primary)] transition-all min-h-[4px]"
+                        style={{ height: `${h}%` }}
+                      />
+                      <span className="text-[10px] text-[var(--text-muted)]">{d.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-[var(--text-muted)] mt-3 text-center">信息发布数（按天）</p>
+            </div>
+          )}
+
+          {/* Recent posts */}
+          {stats?.recentPosts?.length > 0 && (
+            <div className="bg-white rounded-xl p-4 border-2 border-[var(--border)]">
+              <p className="text-sm font-bold text-[var(--navy)] mb-3">最新发布</p>
+              <div className="space-y-2">
+                {stats.recentPosts.map((p: any) => (
+                  <div key={p.id} className="flex items-center gap-2 text-sm">
+                    <span className="text-base">📝</span>
+                    <span className="font-semibold text-[var(--navy)] truncate flex-1">{p.content}</span>
+                    <span className="text-xs text-[var(--text-muted)] shrink-0">{formatTime(p.created_at)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Recent users */}
           {stats?.recentUsers?.length > 0 && (
