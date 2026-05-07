@@ -26,25 +26,21 @@ export default function HomePage() {
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState('');
 
-  const loadingRef = useRef(false);
+  const fetchIdRef = useRef(0);
   const cacheRef = useRef<Map<string, { posts: any[]; skip: number; hasMore: boolean }>>(new Map());
 
   const fetchPosts = useCallback(async (reset: boolean) => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-
+    const thisFetchId = ++fetchIdRef.current;
     const key = cacheKey(activeCategory, town);
     const newSkip = reset ? 0 : skip;
     const cached = cacheRef.current.get(key);
 
-    // Show cached data instantly and refresh in background
     if (reset && cached) {
       setPosts(cached.posts);
       setSkip(cached.skip);
       setHasMore(cached.hasMore);
       setInitialLoading(false);
       setRefreshing(true);
-      // refresh in background
     } else {
       setLoading(true);
     }
@@ -60,6 +56,8 @@ export default function HomePage() {
     try {
       const res = await fetch(`/api/posts?${params}`);
       const data = await res.json();
+      // Ignore stale responses from rapid switching
+      if (thisFetchId !== fetchIdRef.current) return;
       if (res.ok) {
         const incomingPosts = data.posts;
         const merged = reset ? incomingPosts : [...(reset ? [] : posts), ...incomingPosts];
@@ -69,8 +67,6 @@ export default function HomePage() {
         setPosts(merged);
         setSkip(newTotalSkip);
         setHasMore(hMore);
-
-        // Cache first page only
         if (reset) {
           cacheRef.current.set(key, { posts: incomingPosts, skip: newTotalSkip, hasMore: hMore });
         }
@@ -78,12 +74,13 @@ export default function HomePage() {
         setError(data.error || '加载失败');
       }
     } catch {
-      if (!cached) setError('网络错误，请刷新重试');
+      if (thisFetchId === fetchIdRef.current && !cached) setError('网络错误，请刷新重试');
     }
-    setLoading(false);
-    setInitialLoading(false);
-    setRefreshing(false);
-    loadingRef.current = false;
+    if (thisFetchId === fetchIdRef.current) {
+      setLoading(false);
+      setInitialLoading(false);
+      setRefreshing(false);
+    }
   }, [activeCategory, town, search, skip, posts]);
 
   useEffect(() => {
