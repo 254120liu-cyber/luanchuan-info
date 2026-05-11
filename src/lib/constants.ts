@@ -35,7 +35,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   other: '#636E72'
 };
 
-export const POST_EXPIRE_HOURS = 72;
+export const POST_EXPIRE_HOURS = 720; // 30 days
 export const LOCAL_DOMAIN = '@lc.local';
 
 export type PostStatus = 'normal' | 'reported' | 'deleted';
