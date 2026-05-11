@@ -12,10 +12,22 @@ async function autoCleanup() {
   lastCleanup = Date.now();
   try {
     const admin = createAdminClient();
-    const { data: expired } = await admin.from('posts').select('id').eq('status', 'normal').lt('expire_at', new Date().toISOString());
+    const now = new Date().toISOString();
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+
+    // 1. Soft-delete newly expired posts
+    const { data: expired } = await admin.from('posts').select('id').eq('status', 'normal').lt('expire_at', now);
     if (expired && expired.length > 0) {
       await admin.from('posts').update({ status: 'deleted' }).in('id', expired.map(p => p.id));
     }
+
+    // 2. Hard-delete posts soft-deleted >7 days ago (cascade removes favorites)
+    const { data: staleDelete } = await admin.from('posts').select('id').eq('status', 'deleted').lt('expire_at', weekAgo);
+    if (staleDelete && staleDelete.length > 0) {
+      await admin.from('posts').delete().in('id', staleDelete.map(p => p.id));
+    }
+
+    // 3. Clean up orphaned favorites
     try { await admin.rpc('cleanup_favorites'); } catch {}
   } catch {}
 }
